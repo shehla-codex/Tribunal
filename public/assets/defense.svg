@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="46" fill="#151517" stroke="#4A86C5" stroke-width="4"/>
+  <!-- Owl body (Defense blue) -->
+  <path d="M26 64 C26 40, 36 28, 50 28 C64 28, 74 40, 74 64 C74 76, 64 84, 50 84 C36 84, 26 76, 26 64 Z" fill="#4A86C5"/>
+  <!-- Rounded friendly tufts -->
+  <polygon points="32,32 26,18 40,28" fill="#2B6CB0"/>
+  <polygon points="68,32 74,18 60,28" fill="#2B6CB0"/>
+  <!-- Big reassuring eyes -->
+  <circle cx="40" cy="46" r="11" fill="#FBFAF8" stroke="#E8E2D8" stroke-width="2"/>
+  <circle cx="60" cy="46" r="11" fill="#FBFAF8" stroke="#E8E2D8" stroke-width="2"/>
+  <circle cx="40" cy="46" r="5" fill="#151517"/>
+  <circle cx="60" cy="46" r="5" fill="#151517"/>
+  <circle cx="42" cy="44" r="1.5" fill="#FFFFFF"/>
+  <circle cx="62" cy="44" r="1.5" fill="#FFFFFF"/>
+  <!-- Beak -->
+  <polygon points="50,52 45,60 55,60" fill="#E0A64A"/>
+  <!-- Defense blue robe with gold button -->
+  <path d="M46 66 L54 66 L56 78 L44 78 Z" fill="#FFFFFF"/>
+  <circle cx="50" cy="72" r="2" fill="#B67F3D"/>
+</svg>
