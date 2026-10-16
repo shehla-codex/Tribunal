@@ -37,13 +37,11 @@ export default function AppShell({ children }: AppShellProps) {
         <div>
           {/* Logo & Brand */}
           <Link href="/" className="flex items-center gap-3 mb-8 group">
-            <div className="w-10 h-10 rounded-xl bg-hero-charcoal border border-gold-primary/40 flex items-center justify-center p-1.5 shadow-sm group-hover:scale-105 transition-transform">
-              <img 
-                src="/assets/tribunal-logo.svg" 
-                alt="Tribunal Logo" 
-                className="w-full h-full object-contain" 
-              />
-            </div>
+            <img 
+              src="/assets/tribunal-logo.png" 
+              alt="Tribunal Logo" 
+              className="w-10 h-10 object-contain group-hover:scale-105 transition-transform" 
+            />
             <div>
               <h1 className="font-serif font-bold text-lg text-charcoal tracking-tight leading-none">
                 Tribunal
@@ -105,7 +103,7 @@ export default function AppShell({ children }: AppShellProps) {
         <header className="h-16 border-b border-card-border bg-card-surface/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 md:hidden">
-              <img src="/assets/tribunal-logo.svg" alt="Tribunal" className="w-7 h-7" />
+              <img src="/assets/tribunal-logo.png" alt="Tribunal" className="w-8 h-8 object-contain" />
               <span className="font-serif font-bold text-charcoal">Tribunal</span>
             </div>
             <div className="hidden md:flex items-center gap-2 text-xs text-charcoal-muted font-medium">

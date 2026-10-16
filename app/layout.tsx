@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "Tribunal — Your code. Put on trial.",
   description: "An adversarial, owl-themed AI courtroom where your code is judged by three AI characters: Prosecutor, Defense Attorney, and Judge.",
   icons: {
-    icon: "/assets/tribunal-logo.svg",
+    icon: "/assets/tribunal-logo.png",
   },
 };
 
