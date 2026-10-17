@@ -29,7 +29,7 @@ Build mode: learn
   Learner check: Click a demo case on the dashboard and verify the case details and evidence code load into the review editor.
   Commit: `Day 2: Add offline demo case data, Zod schemas, and code review input component`
 
-- [ ] **3. Day 3: Animated Courtroom Deliberation & Verdict Card**
+- [x] **3. Day 3: Animated Courtroom Deliberation & Verdict Card**
   Becomes usable: Turn-by-turn debate animation between Prosecutor and Defense owls with avatar status badges, typing indicator, skip button, animated verdict stamp, circular SVG Code Health Score ring (0-100), category breakdown bars, and ranked Sentence.
   Why now: Implements the core unique kernel and the primary visual attraction for the 1–3 min hackathon demo video.
   PRD ref: `prd.md > Feature Priorities > P0 (Must-Have Core)` (Deliberation Engine, Verdict & Health Score)

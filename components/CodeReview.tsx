@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { TrialCase, Charge, DebateTurn } from "@/lib/schema";
 import { DEMO_CASES, DEMO_CASE_LIST } from "@/data/demo-cases";
+import Courtroom from "@/components/Courtroom";
+import VerdictView from "@/components/VerdictView";
 
 export default function CodeReview() {
   const searchParams = useSearchParams();
@@ -30,6 +32,19 @@ export default function CodeReview() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeDemoId, setActiveDemoId] = useState<string | null>(null);
+  const [isDeliberationComplete, setIsDeliberationComplete] = useState<boolean>(false);
+
+  // Helper to format docket identifier cleanly (no raw timestamps)
+  const formatDocketId = (id: string) => {
+    if (id === "demo-auth") return "DOCKET #AUTH-LEAK";
+    if (id === "demo-async") return "DOCKET #ASYNC-RACE";
+    if (id === "demo-sql") return "DOCKET #SQL-INJECT";
+    if (id.startsWith("trial-")) {
+      const suffix = id.replace("trial-", "").slice(-5);
+      return `DOCKET #TR-${suffix}`;
+    }
+    return `DOCKET #${id.toUpperCase()}`;
+  };
 
   // Check URL query parameters for ?case=demo-auth etc.
   useEffect(() => {
@@ -48,6 +63,7 @@ export default function CodeReview() {
       setFileName(demo.charges[0]?.file || "evidence.js");
       setTrial(demo);
       setActiveDemoId(id);
+      setIsDeliberationComplete(false);
       setError(null);
     }
   };
@@ -81,6 +97,7 @@ export default function CodeReview() {
 
       setTrial(data);
       setActiveDemoId(null);
+      setIsDeliberationComplete(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to analyze code.";
       setError(msg);
@@ -95,6 +112,7 @@ export default function CodeReview() {
     setFileName("");
     setTrial(null);
     setActiveDemoId(null);
+    setIsDeliberationComplete(false);
     setError(null);
   };
 
@@ -283,7 +301,7 @@ export default function CodeReview() {
                   3
                 </span>
                 <p>
-                  <strong className="text-charcoal font-medium">Day 2 Milestone:</strong> Raw trial data is presented below in a structured, readable format. Animated courtroom debates and stamps arrive in Day 3.
+                  <strong className="text-charcoal font-medium">Courtroom Deliberation:</strong> Watch the Prosecutor and Defense argue each charge before Chief Justice Owl hands down the verdict and code health score.
                 </p>
               </div>
             </div>
@@ -292,7 +310,7 @@ export default function CodeReview() {
               <div className="pt-3 border-t border-card-border">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium text-charcoal">Case Loaded:</span>
-                  <span className="font-mono text-gold-primary font-semibold">{trial.id}</span>
+                  <span className="font-mono text-gold-primary font-semibold">{formatDocketId(trial.id)}</span>
                 </div>
                 <p className="text-xs font-serif font-bold text-charcoal mt-1">
                   {trial.caseName}
@@ -303,263 +321,19 @@ export default function CodeReview() {
         </div>
       </div>
 
-      {/* Raw Trial Result Display (Day 2 Milestone) */}
+      {/* Courtroom View & Verdict */}
       {trial && (
-        <div className="space-y-6 pt-4 border-t border-card-border">
-          {/* Section Heading */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-gold-primary">
-                Day 2 Milestone Output
-              </span>
-              <h3 className="font-serif font-bold text-2xl text-charcoal">
-                Trial Proceedings & Judicial Record
-              </h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-cream-200 text-charcoal font-mono">
-                {trial.language}
-              </span>
-            </div>
-          </div>
+        <div className="space-y-8 pt-4 border-t border-card-border">
+          {/* Animated Courtroom Debate & Charges */}
+          <Courtroom
+            trial={trial}
+            onDeliberationComplete={() => setIsDeliberationComplete(true)}
+            isDeliberationComplete={isDeliberationComplete}
+          />
 
-          {/* Verdict and Health Score Card */}
-          <div className="p-6 rounded-2xl bg-card-surface border border-card-border shadow-xs space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-card-border">
-              <div className="space-y-1">
-                <span className="text-xs font-semibold text-charcoal-muted uppercase tracking-wider">
-                  Official Ruling
-                </span>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`text-lg sm:text-xl font-serif font-bold px-3 py-1 rounded-lg ${
-                      trial.verdict.ruling === "Guilty"
-                        ? "bg-prosecutor-crimson/10 text-prosecutor-crimson border border-prosecutor-crimson/20"
-                        : trial.verdict.ruling === "Guilty with Community Service"
-                        ? "bg-gold-primary/10 text-gold-primary border border-gold-primary/20"
-                        : "bg-teal-accent/10 text-teal-accent border border-teal-accent/20"
-                    }`}
-                  >
-                    {trial.verdict.ruling.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Score Badges */}
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="text-center px-4 py-2 rounded-xl bg-cream-100 border border-card-border">
-                  <span className="block text-[10px] uppercase font-semibold text-charcoal-muted">Overall Health</span>
-                  <span className="font-serif font-bold text-2xl text-charcoal">
-                    {trial.scores.overall}<span className="text-xs font-sans text-charcoal-muted font-normal">/100</span>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="px-3 py-1.5 rounded-lg bg-cream-50 border border-card-border text-center">
-                    <span className="block text-[10px] text-charcoal-muted">Logic</span>
-                    <span className="font-bold text-charcoal">{trial.scores.logic}</span>
-                  </div>
-                  <div className="px-3 py-1.5 rounded-lg bg-cream-50 border border-card-border text-center">
-                    <span className="block text-[10px] text-charcoal-muted">Security</span>
-                    <span className="font-bold text-charcoal">{trial.scores.security}</span>
-                  </div>
-                  <div className="px-3 py-1.5 rounded-lg bg-cream-50 border border-card-border text-center">
-                    <span className="block text-[10px] text-charcoal-muted">Maintainability</span>
-                    <span className="font-bold text-charcoal">{trial.scores.maintainability}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Verdict Summary */}
-            <div className="text-xs sm:text-sm text-charcoal leading-relaxed bg-cream-100/60 p-4 rounded-xl border border-card-border">
-              <strong className="font-serif text-charcoal font-bold block mb-1">Judicial Summary:</strong>
-              {trial.verdict.summary}
-            </div>
-
-            {/* Sentence / Actionable Fixes */}
-            <div>
-              <h4 className="font-serif font-bold text-sm text-charcoal mb-2.5 flex items-center gap-2">
-                <Gavel className="w-4 h-4 text-gold-primary" />
-                <span>The Court's Sentence (Mandated Fixes):</span>
-              </h4>
-              <ol className="space-y-2">
-                {trial.verdict.sentence.map((fix, idx) => (
-                  <li
-                    key={idx}
-                    className="text-xs text-charcoal flex items-start gap-2.5 p-2.5 rounded-lg bg-cream-50 border border-card-border/60"
-                  >
-                    <span className="w-5 h-5 rounded-full bg-cream-200 text-charcoal font-bold flex items-center justify-center shrink-0 text-[10px]">
-                      {idx + 1}
-                    </span>
-                    <span className="leading-relaxed">{fix}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-
-          {/* Charges Filed */}
-          <div className="space-y-3">
-            <h4 className="font-serif font-bold text-lg text-charcoal flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-prosecutor-crimson" />
-              <span>Formal Charges Filed ({trial.charges.length})</span>
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {trial.charges.map((charge) => (
-                <div
-                  key={charge.id}
-                  className="p-4 rounded-xl bg-card-surface border border-card-border shadow-2xs space-y-2 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="font-mono text-charcoal-muted text-[11px]">
-                        {charge.file ? `${charge.file}${charge.line ? `:${charge.line}` : ""}` : charge.id}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            charge.severity === "Critical"
-                              ? "bg-prosecutor-crimson/10 text-prosecutor-crimson border border-prosecutor-crimson/20"
-                              : charge.severity === "Serious"
-                              ? "bg-gold-primary/10 text-gold-primary border border-gold-primary/20"
-                              : "bg-cream-200 text-charcoal"
-                          }`}
-                        >
-                          {charge.severity}
-                        </span>
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cream-100 text-charcoal-muted border border-card-border">
-                          {charge.category}
-                        </span>
-                      </div>
-                    </div>
-
-                    <h5 className="font-serif font-bold text-sm text-charcoal">
-                      {charge.title}
-                    </h5>
-
-                    <p className="text-xs text-charcoal-muted mt-1 leading-relaxed">
-                      {charge.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Courtroom Debate Transcript */}
-          <div className="p-6 rounded-2xl bg-card-surface border border-card-border shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-serif font-bold text-lg text-charcoal flex items-center gap-2">
-                <Terminal className="w-5 h-5 text-defense-blue" />
-                <span>Courtroom Debate Transcript ({trial.debate.length} Turns)</span>
-              </h4>
-              <span className="text-xs text-charcoal-muted">
-                Turn-by-turn debate animation scheduled for Day 3
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {trial.debate.map((turn, idx) => {
-                const isProsecutor = turn.speaker === "prosecutor";
-                const isDefense = turn.speaker === "defense";
-                const isJudge = turn.speaker === "judge";
-
-                return (
-                  <div
-                    key={idx}
-                    className={`p-3.5 rounded-xl border text-xs leading-relaxed space-y-1 ${
-                      isProsecutor
-                        ? "bg-prosecutor-crimson/5 border-prosecutor-crimson/20"
-                        : isDefense
-                        ? "bg-defense-blue/5 border-defense-blue/20"
-                        : "bg-gold-primary/5 border-gold-primary/20"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-semibold">
-                      <span
-                        className={
-                          isProsecutor
-                            ? "text-prosecutor-crimson uppercase tracking-wider"
-                            : isDefense
-                            ? "text-defense-blue uppercase tracking-wider"
-                            : "text-gold-primary uppercase tracking-wider"
-                        }
-                      >
-                        {isProsecutor
-                          ? "Prosecutor Owl"
-                          : isDefense
-                          ? "Defense Owl"
-                          : "Judge Owl"}
-                      </span>
-                      {turn.chargeId && (
-                        <span className="font-mono text-charcoal-muted text-[10px]">
-                          Ref: {turn.chargeId}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-charcoal">{turn.text}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Demo Extras: Canned Objections & Appeal Preview (if present) */}
-          {trial.cannedObjections && trial.cannedObjections.length > 0 && (
-            <div className="p-5 rounded-2xl bg-cream-50 border border-card-border space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="font-serif font-bold text-sm text-charcoal flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-gold-primary" />
-                  <span>Pre-written In-Character Objections (Demo Data for Day 5)</span>
-                </h5>
-                <span className="text-[11px] text-teal-accent font-medium">Ready for Objection Trigger</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {trial.cannedObjections.map((obj, i) => (
-                  <div key={i} className="p-3 rounded-xl bg-card-surface border border-card-border text-xs space-y-1.5">
-                    <p className="font-medium text-charcoal italic">"{obj.trigger}"</p>
-                    <div className="text-[11px] flex items-center gap-1.5">
-                      <span className={`font-bold ${obj.ruling === "Sustained" ? "text-teal-accent" : "text-prosecutor-crimson"}`}>
-                        [{obj.ruling}]
-                      </span>
-                      <span className="text-charcoal-muted line-clamp-2">{obj.reply}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {trial.appealData && (
-            <div className="p-5 rounded-2xl bg-cream-50 border border-card-border space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="font-serif font-bold text-sm text-charcoal flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-teal-accent" />
-                  <span>Appeal Fixed Code Version (Demo Data for Day 6)</span>
-                </h5>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-accent/15 text-teal-accent">
-                  Score: {trial.appealData.previousScore} ➔ {trial.appealData.newScore} (+{trial.appealData.newScore - trial.appealData.previousScore} pts)
-                </span>
-              </div>
-
-              <div className="space-y-1.5 text-xs">
-                <p className="font-medium text-charcoal">Implemented Improvements:</p>
-                <ul className="list-disc list-inside text-charcoal-muted space-y-0.5">
-                  {trial.appealData.improvements.map((imp, idx) => (
-                    <li key={idx}>{imp}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="bg-card-surface border border-card-border rounded-xl p-3 overflow-x-auto max-h-48">
-                <pre className="font-mono text-[11px] text-charcoal leading-relaxed whitespace-pre">
-                  {trial.appealData.revisedCode}
-                </pre>
-              </div>
-            </div>
+          {/* Verdict View (appears once deliberation is complete or skipped) */}
+          {isDeliberationComplete && (
+            <VerdictView trial={trial} />
           )}
         </div>
       )}
