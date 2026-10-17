@@ -1,0 +1,106 @@
+{
+  "id": "demo-async",
+  "caseName": "Async Race Condition & Memory Leak",
+  "timestamp": 1718000100000,
+  "codeSnippet": "import { useState, useEffect } from 'react';\n\nexport function useUserProfile(userId: string) {\n  const [user, setUser] = useState<any>(null);\n  const [loading, setLoading] = useState(true);\n\n  useEffect(() => {\n    setLoading(true);\n    // Missing cancellation flag and AbortController\n    fetch(`/api/users/${userId}`)\n      .then(res => res.json())\n      .then(data => {\n        // Race condition: previous response can overwrite current user\n        setUser(data);\n        setLoading(false);\n      });\n    // Missing cleanup return function!\n  }, [userId]);\n\n  return { user, loading };\n}",
+  "language": "TypeScript / React",
+  "charges": [
+    {
+      "id": "ch-1",
+      "severity": "Serious",
+      "category": "Logic",
+      "title": "Asynchronous State Race Condition",
+      "description": "When userId changes rapidly, promises resolve out of order. A slow network response for an earlier user will overwrite the state of a newer user on line 14.",
+      "file": "hooks/useUserProfile.ts",
+      "line": 14
+    },
+    {
+      "id": "ch-2",
+      "severity": "Serious",
+      "category": "Logic",
+      "title": "Uncancelled Async Subscription on Unmount",
+      "description": "The useEffect hook on lines 7-18 has no cleanup function returning an AbortController abort call, leading to memory leaks and unmounted component state updates.",
+      "file": "hooks/useUserProfile.ts",
+      "line": 17
+    },
+    {
+      "id": "ch-3",
+      "severity": "Minor",
+      "category": "Maintainability",
+      "title": "Permissive 'any' Type Annotation",
+      "description": "State is initialized with untyped 'any' on line 4, disabling TypeScript type checking across consumers of the hook.",
+      "file": "hooks/useUserProfile.ts",
+      "line": 4
+    }
+  ],
+  "debate": [
+    {
+      "speaker": "prosecutor",
+      "text": "Your Honor, observe line 14! If a user swiftly toggles between profile tabs, this hook experiences an uncontrolled race condition, displaying Profile B with the data of Profile A!",
+      "chargeId": "ch-1"
+    },
+    {
+      "speaker": "defense",
+      "text": "The defense agrees that network delays may cause jitter, but this hook was structured for simplicity in a dashboard where user switching is rare.",
+      "chargeId": "ch-1"
+    },
+    {
+      "speaker": "prosecutor",
+      "text": "Rare? When the user navigates away, line 17 leaves the promise dangling! React will scream console warnings regarding unmounted component updates and leaked memory.",
+      "chargeId": "ch-2"
+    },
+    {
+      "speaker": "defense",
+      "text": "We are eager to implement an AbortController cleanup cycle, along with strict UserProfile interfaces. This code is salvageable!",
+      "chargeId": "ch-2"
+    },
+    {
+      "speaker": "judge",
+      "text": "The Court recognizes that while no malicious breach occurred, unpredictable state logic and memory leaks cannot go unaddressed. A verdict with mandatory community service is appropriate."
+    }
+  ],
+  "scores": {
+    "overall": 72,
+    "logic": 55,
+    "security": 90,
+    "maintainability": 70
+  },
+  "verdict": {
+    "ruling": "Guilty with Community Service",
+    "summary": "The Court finds the code GUILTY WITH COMMUNITY SERVICE. The implementation is benign in security intent but criminally negligent in asynchronous lifecycle hygiene and race condition mitigation.",
+    "sentence": [
+      "Instantiate an AbortController inside useEffect and abort pending HTTP requests on component unmount.",
+      "Implement a boolean active flag or signal check to prevent out-of-order state settlement.",
+      "Replace 'any' with a dedicated UserProfile TypeScript interface.",
+      "Add try/catch or fetch rejection handling to account for aborted network requests without noisy console errors."
+    ]
+  },
+  "cannedObjections": [
+    {
+      "trigger": "React 18 automatically handles state updates safely during component unmounting!",
+      "ruling": "Overruled",
+      "reply": "React may suppress the red warning, but dangling network requests still consume client bandwidth and produce stale closure races."
+    },
+    {
+      "trigger": "A debounce layer on the parent component prevents rapid userId switching!",
+      "ruling": "Overruled",
+      "reply": "Band-aids on consumer components do not forgive an inherently non-reentrant custom hook."
+    },
+    {
+      "trigger": "Using AbortController natively cancels the HTTP request cleanly!",
+      "ruling": "Sustained",
+      "reply": "Sustained. Modern browser AbortController with an active cleanup closure represents the gold standard remedy."
+    }
+  ],
+  "appealData": {
+    "previousScore": 72,
+    "newScore": 95,
+    "improvements": [
+      "Introduced AbortController with automatic teardown in useEffect cleanup function",
+      "Guarded against DOM state update race conditions when userId changes quickly",
+      "Added strict UserProfile TypeScript interface replacing 'any'",
+      "Handled AbortError gracefully without triggering false error states"
+    ],
+    "revisedCode": "import { useState, useEffect } from 'react';\n\nexport interface UserProfile {\n  id: string;\n  name: string;\n  email: string;\n  avatarUrl?: string;\n}\n\nexport function useUserProfile(userId: string) {\n  const [user, setUser] = useState<UserProfile | null>(null);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string | null>(null);\n\n  useEffect(() => {\n    const controller = new AbortController();\n    let isMounted = true;\n\n    setLoading(true);\n    setError(null);\n\n    fetch(`/api/users/${encodeURIComponent(userId)}`, { signal: controller.signal })\n      .then(async (res) => {\n        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);\n        return res.json() as Promise<UserProfile>;\n      })\n      .then((data) => {\n        if (isMounted) {\n          setUser(data);\n          setLoading(false);\n        }\n      })\n      .catch((err) => {\n        if (err.name !== 'AbortError' && isMounted) {\n          setError(err.message || 'Failed to fetch user');\n          setLoading(false);\n        }\n      });\n\n    return () => {\n      isMounted = false;\n      controller.abort();\n    };\n  }, [userId]);\n\n  return { user, loading, error };\n}"
+  }
+}

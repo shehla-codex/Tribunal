@@ -122,7 +122,7 @@ export default function DemoCaseCards() {
                 </div>
 
                 <Link
-                  href="/review"
+                  href={`/review?case=${demo.id}`}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-primary hover:text-gold-amber transition-colors"
                 >
                   <span>Examine Case</span>

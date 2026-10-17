@@ -19,7 +19,7 @@ Build mode: learn
   Learner check: Run `npm install` and `npm run dev`, open `http://localhost:3000`, and confirm the courtroom hero banner, navigation sidebar, demo case cards, and styling match the design vision.
   Commit: `Day 1: Scaffold Next.js app, configure design tokens, and build static dashboard shell`
 
-- [ ] **2. Day 2: Offline Demo Cases & Paste-Code Input Pipeline**
+- [x] **2. Day 2: Offline Demo Cases & Paste-Code Input Pipeline**
   Becomes usable: 3 complete offline demo cases loaded from JSON in `/data/demo-cases/`, plus the Code Review editor tab where a user can paste code and see line numbers and syntax preview.
   Why now: Provides the core data contract and input surface before animation, ensuring zero-API-key testing is locked in early.
   PRD ref: `prd.md > Feature Priorities > P0 (Must-Have Core)` (Offline Demo Mode, Paste Code Review)

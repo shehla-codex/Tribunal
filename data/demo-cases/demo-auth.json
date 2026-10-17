@@ -1,0 +1,116 @@
+{
+  "id": "demo-auth",
+  "caseName": "Hardcoded API Secret & JWT Validation",
+  "timestamp": 1718000000000,
+  "codeSnippet": "const express = require('express');\nconst jwt = require('jsonwebtoken');\nconst db = require('./db');\n\nconst router = express.Router();\nconst JWT_SECRET = \"super-secret-production-key-dont-share-12345\"; // CRITICAL: Hardcoded secret\n\nrouter.post('/login', async (req, res) => {\n  const { username, password } = req.body;\n\n  // Plaintext password comparison\n  const user = await db.users.findUnique({ where: { username } });\n  if (user && user.password === password) {\n    // Missing token expiration and algorithmic constraint\n    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);\n    return res.json({ token, user: { id: user.id, username: user.username } });\n  }\n\n  // Missing generic timing-attack-safe error response and no try/catch\n  return res.status(401).send(\"Invalid password for user: \" + username);\n});\n\nmodule.exports = router;",
+  "language": "Node.js / Express",
+  "charges": [
+    {
+      "id": "ch-1",
+      "severity": "Critical",
+      "category": "Security",
+      "title": "Hardcoded Cryptographic Secret",
+      "description": "JWT signing secret is stored directly in source code on line 6. Any collaborator, build log, or public commit exposes the secret and allows arbitrary token forging.",
+      "file": "routes/auth.js",
+      "line": 6
+    },
+    {
+      "id": "ch-2",
+      "severity": "Critical",
+      "category": "Security",
+      "title": "Plaintext Password Verification",
+      "description": "User passwords are checked on line 12 via direct equality comparison without cryptographic salt or hashing (e.g., bcrypt/argon2), violating basic storage standards.",
+      "file": "routes/auth.js",
+      "line": 12
+    },
+    {
+      "id": "ch-3",
+      "severity": "Serious",
+      "category": "Security",
+      "title": "Unbounded Token Expiration Window",
+      "description": "The JWT generated on line 14 omits an 'expiresIn' configuration, issuing eternal tokens that cannot be invalidated if stolen.",
+      "file": "routes/auth.js",
+      "line": 14
+    },
+    {
+      "id": "ch-4",
+      "severity": "Serious",
+      "category": "Logic",
+      "title": "Unhandled Async Rejections & User Enumeration",
+      "description": "The route handler lacks a try/catch boundary, risking process-level crashes on database hiccups. Line 19 confirms username existence, aiding enumeration attacks.",
+      "file": "routes/auth.js",
+      "line": 19
+    }
+  ],
+  "debate": [
+    {
+      "speaker": "prosecutor",
+      "text": "Your Honor! The defendant has committed high treason against the First Law of Security: line 6 harbors a raw cryptographic signing key in plaintext source code!",
+      "chargeId": "ch-1"
+    },
+    {
+      "speaker": "defense",
+      "text": "A brief objection on procedural grounds! This repository was created as an internal MVP stub to unblock client frontend integration tests.",
+      "chargeId": "ch-1"
+    },
+    {
+      "speaker": "prosecutor",
+      "text": "Internal MVP? Tell that to the users whose passwords are verified on line 12 with direct string comparison! A single data leak exposes every credential in plain daylight.",
+      "chargeId": "ch-2"
+    },
+    {
+      "speaker": "defense",
+      "text": "We acknowledge the severity of the charges, Your Honor. The defense is prepared to introduce bcrypt hashing and move the signing key to environment configuration immediately.",
+      "chargeId": "ch-2"
+    },
+    {
+      "speaker": "judge",
+      "text": "Good intentions do not nullify the breach radius. Eternal tokens and hardcoded keys warrant severe scrutiny under this court."
+    }
+  ],
+  "scores": {
+    "overall": 58,
+    "logic": 68,
+    "security": 35,
+    "maintainability": 71
+  },
+  "verdict": {
+    "ruling": "Guilty",
+    "summary": "The Court finds the defendant GUILTY on multiple counts of cryptographic negligence and insecure credential handling. Hardcoded keys and plaintext authentication cannot be excused by prototype deadlines.",
+    "sentence": [
+      "Extract JWT_SECRET into process.env.JWT_SECRET and require it at application boot.",
+      "Migrate user passwords to salted bcrypt hashes with cost factor 12.",
+      "Enforce an explicit token lifespan (e.g., '15m') and configure standard audience/issuer headers.",
+      "Wrap async database calls with try/catch and delegate unexpected errors to express error middleware."
+    ]
+  },
+  "cannedObjections": [
+    {
+      "trigger": "This is only an MVP created for local testing!",
+      "ruling": "Overruled",
+      "reply": "The Court grants no immunity to 'temporary prototypes'. Hardcoded keys committed to git history survive indefinitely."
+    },
+    {
+      "trigger": "Our reverse proxy sanitizes errors and terminates TLS before hitting Express!",
+      "ruling": "Overruled",
+      "reply": "Defense-in-depth is mandatory. Upstream proxies do not prevent session forging once the signing secret is leaked."
+    },
+    {
+      "trigger": "We can wrap the handler in an express async error boundary!",
+      "ruling": "Sustained",
+      "reply": "A valid architectural point. Async boundaries stabilize server health, though the security charges remain fully culpable."
+    }
+  ],
+  "appealData": {
+    "previousScore": 58,
+    "newScore": 92,
+    "improvements": [
+      "Extracted JWT secrets to process.env with runtime presence validation",
+      "Implemented bcrypt.compare with salted hashes",
+      "Constrained token validity to a 15-minute expiration window",
+      "Standardized generic 401 response preventing account enumeration",
+      "Structured async error delegation via express next(err)"
+    ],
+    "revisedCode": "const express = require('express');\nconst jwt = require('jsonwebtoken');\nconst bcrypt = require('bcrypt');\nconst db = require('./db');\n\nconst router = express.Router();\nconst JWT_SECRET = process.env.JWT_SECRET;\nif (!JWT_SECRET) {\n  throw new Error(\"FATAL: JWT_SECRET environment variable is missing\");\n}\n\nrouter.post('/login', async (req, res, next) => {\n  try {\n    const { username, password } = req.body;\n    if (!username || !password) {\n      return res.status(400).json({ error: \"Username and password required\" });\n    }\n\n    const user = await db.users.findUnique({ where: { username } });\n    if (!user) {\n      return res.status(401).json({ error: \"Invalid credentials\" });\n    }\n\n    const isValid = await bcrypt.compare(password, user.passwordHash);\n    if (!isValid) {\n      return res.status(401).json({ error: \"Invalid credentials\" });\n    }\n\n    const token = jwt.sign(\n      { sub: user.id, role: user.role },\n      JWT_SECRET,\n      { expiresIn: '15m', algorithm: 'HS256' }\n    );\n\n    return res.json({ token, user: { id: user.id, username: user.username } });\n  } catch (err) {\n    next(err);\n  }\n});\n\nmodule.exports = router;"
+  }
+}

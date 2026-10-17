@@ -1,0 +1,115 @@
+{
+  "id": "demo-sql",
+  "caseName": "SQL String Interpolation & Param Injection",
+  "timestamp": 1718000200000,
+  "codeSnippet": "from fastapi import FastAPI, Request\nimport sqlite3\n\napp = FastAPI()\nconn = sqlite3.connect(\"production.db\", check_same_thread=False)\n\n@app.get(\"/api/search\")\ndef search_records(query: str, status: str = \"active\"):\n    cursor = conn.cursor()\n    # CRITICAL VULNERABILITY: Direct f-string SQL interpolation\n    sql = f\"SELECT id, title, data FROM records WHERE status = '{status}' AND title LIKE '%{query}%'\"\n    \n    try:\n        cursor.execute(sql)\n        records = cursor.fetchall()\n        return {\"count\": len(records), \"results\": records}\n    except Exception as e:\n        # Leaking internal database error traceback\n        return {\"error\": str(e), \"debug_query\": sql}",
+  "language": "Python / FastAPI",
+  "charges": [
+    {
+      "id": "ch-1",
+      "severity": "Critical",
+      "category": "Security",
+      "title": "Raw SQL Interpolation (CWE-89)",
+      "description": "Query string on line 11 constructs SQL via Python f-string concatenation with unescaped user parameters. An attacker can inject ' OR '1'='1 to exfiltrate table records or execute DROP statements.",
+      "file": "api/search.py",
+      "line": 11
+    },
+    {
+      "id": "ch-2",
+      "severity": "Serious",
+      "category": "Security",
+      "title": "Verbose Database Diagnostic Leak",
+      "description": "Line 19 returns raw database exceptions and the interpolated SQL string to unauthenticated callers, exposing schema structure and aiding blind injection.",
+      "file": "api/search.py",
+      "line": 19
+    },
+    {
+      "id": "ch-3",
+      "severity": "Serious",
+      "category": "Logic",
+      "title": "Unbounded Result Set Allocation",
+      "description": "Line 15 performs fetchall() without pagination or query limit boundaries, risking denial of service and server memory exhaustion on large datasets.",
+      "file": "api/search.py",
+      "line": 15
+    },
+    {
+      "id": "ch-4",
+      "severity": "Minor",
+      "category": "Maintainability",
+      "title": "Thread-Unsafe Shared Connection Pattern",
+      "description": "check_same_thread=False on line 5 shares a single SQLite connection across concurrent ASGI worker threads without a connection pool or lock.",
+      "file": "api/search.py",
+      "line": 5
+    }
+  ],
+  "debate": [
+    {
+      "speaker": "prosecutor",
+      "text": "Members of the jury, line 11 is an invitation to digital burglary! An f-string concatenating user parameters directly into a SQL statement is textbook SQL injection that has plagued software since the dawn of relational databases!",
+      "chargeId": "ch-1"
+    },
+    {
+      "speaker": "defense",
+      "text": "Your Honor, this endpoint is restricted to internal operations dashboard users who already possess administrative database access.",
+      "chargeId": "ch-1"
+    },
+    {
+      "speaker": "prosecutor",
+      "text": "Then why does line 19 broadcast the entire raw SQL query and database traceback back over HTTP when an exception fires? The developer handed the keys to the kingdom to anyone with curl!",
+      "chargeId": "ch-2"
+    },
+    {
+      "speaker": "defense",
+      "text": "We admit that parameterized queries should have been employed. We are prepared to refactor using parameterized placeholders and SQLAlchemy session management immediately.",
+      "chargeId": "ch-1"
+    },
+    {
+      "speaker": "judge",
+      "text": "The Court cannot tolerate raw string interpolation in database operations in this era. The defense's plea for internal amnesty is flatly rejected."
+    }
+  ],
+  "scores": {
+    "overall": 45,
+    "logic": 60,
+    "security": 20,
+    "maintainability": 55
+  },
+  "verdict": {
+    "ruling": "Guilty",
+    "summary": "The Court finds the code overwhelmingly GUILTY of gross security negligence and reckless SQL construction. Concatenating user inputs into raw SQL commands represents an egregious violation of basic safety covenants.",
+    "sentence": [
+      "Refactor all SQL queries to use parameterized placeholders (? or :param) preventing SQL injection.",
+      "Sanitize API error handling to return generic 500 status codes without leaking query strings or internal exceptions.",
+      "Enforce mandatory pagination with default limits (e.g., LIMIT 50 OFFSET :skip).",
+      "Replace single shared SQLite connection with a thread-safe connection pool or scoped session dependency."
+    ]
+  },
+  "cannedObjections": [
+    {
+      "trigger": "This is an internal intranet tool behind a corporate VPN!",
+      "ruling": "Overruled",
+      "reply": "Zero Trust doctrine applies in this courtroom. Internal tooling is historically the primary stepping stone for lateral privilege escalation."
+    },
+    {
+      "trigger": "FastAPI string query parameters are automatically sanitized!",
+      "ruling": "Overruled",
+      "reply": "False doctrine. FastAPI validates data types, but Python f-strings bypass all framework safeguards when formatting raw SQL."
+    },
+    {
+      "trigger": "Parameterized queries with ? placeholders completely neutralize injection attacks!",
+      "ruling": "Sustained",
+      "reply": "Sustained. Parameter binding delegates query separation to the SQLite database engine itself, eliminating the injection vector."
+    }
+  ],
+  "appealData": {
+    "previousScore": 45,
+    "newScore": 94,
+    "improvements": [
+      "Replaced f-string interpolation with parameterized SQL bindings (?)",
+      "Added Pydantic query validation with pagination limits (max 50 records)",
+      "Redacted database error internals from API responses",
+      "Implemented context-managed database connections with dependency injection"
+    ],
+    "revisedCode": "from fastapi import FastAPI, Depends, HTTPException, Query\nimport sqlite3\nfrom typing import List, Dict, Any\n\napp = FastAPI()\nDATABASE_PATH = \"production.db\"\n\ndef get_db():\n    conn = sqlite3.connect(DATABASE_PATH)\n    conn.row_factory = sqlite3.Row\n    try:\n        yield conn\n    finally:\n        conn.close()\n\n@app.get(\"/api/search\")\ndef search_records(\n    query: str = Query(..., min_length=1, max_length=100),\n    status: str = Query(\"active\", regex=\"^(active|archived|pending)$\"),\n    limit: int = Query(20, ge=1, le=100),\n    offset: int = Query(0, ge=0),\n    db: sqlite3.Connection = Depends(get_db)\n) -> Dict[str, Any]:\n    try:\n        cursor = db.cursor()\n        sql = \"\"\"\n            SELECT id, title, data \n            FROM records \n            WHERE status = ? AND title LIKE ? \n            LIMIT ? OFFSET ?\n        \"\"\"\n        param_pattern = f\"%{query}%\"\n        cursor.execute(sql, (status, param_pattern, limit, offset))\n        rows = cursor.fetchall()\n        \n        results = [dict(row) for row in rows]\n        return {\"count\": len(results), \"limit\": limit, \"offset\": offset, \"results\": results}\n    except sqlite3.Error:\n        # Clean sanitized error response\n        raise HTTPException(status_code=500, detail=\"Database search operation failed\")"
+  }
+}
