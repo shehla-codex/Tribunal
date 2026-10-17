@@ -17,12 +17,14 @@ import {
   Sparkles
 } from "lucide-react";
 import { TrialCase, Charge } from "@/lib/schema";
+import { getScoreColor } from "@/lib/storage";
 
 interface VerdictViewProps {
   trial: TrialCase;
+  initialSkipAnimation?: boolean;
 }
 
-export default function VerdictView({ trial }: VerdictViewProps) {
+export default function VerdictView({ trial, initialSkipAnimation = false }: VerdictViewProps) {
   const [activeTab, setActiveTab] = useState<"findings" | "suggestions" | "appeal">("findings");
   const [animatedScore, setAnimatedScore] = useState<number>(0);
   const [barsLoaded, setBarsLoaded] = useState<boolean>(false);
@@ -32,6 +34,12 @@ export default function VerdictView({ trial }: VerdictViewProps) {
 
   // Animated count-up for Code Health Score
   useEffect(() => {
+    if (initialSkipAnimation) {
+      setAnimatedScore(scores.overall);
+      setBarsLoaded(true);
+      return;
+    }
+
     setAnimatedScore(0);
     setBarsLoaded(false);
 
@@ -59,7 +67,7 @@ export default function VerdictView({ trial }: VerdictViewProps) {
       clearInterval(timer);
       clearTimeout(barTimer);
     };
-  }, [trial.id, scores.overall]);
+  }, [trial.id, scores.overall, initialSkipAnimation]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -83,11 +91,8 @@ export default function VerdictView({ trial }: VerdictViewProps) {
   const circumference = 2 * Math.PI * radius; // ~276.46
   const strokeOffset = circumference - (circumference * animatedScore) / 100;
 
-  const scoreColor = scores.overall < 60 
-    ? "#D64545" 
-    : scores.overall < 85 
-    ? "#B67F3D" 
-    : "#43877C";
+  // Score colors: green/teal for 70+, gold for 40-69, red for <40
+  const scoreColor = getScoreColor(scores.overall);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -188,15 +193,21 @@ export default function VerdictView({ trial }: VerdictViewProps) {
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="font-medium text-charcoal flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-defense-blue" />
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: getScoreColor(scores.logic) }}
+                    />
                     <span>Logic & Correctness</span>
                   </span>
                   <span className="font-mono font-bold text-charcoal">{scores.logic}/100</span>
                 </div>
                 <div className="h-3 w-full bg-cream-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-defense-blue rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: barsLoaded ? `${scores.logic}%` : "0%" }}
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{
+                      width: barsLoaded ? `${scores.logic}%` : "0%",
+                      backgroundColor: getScoreColor(scores.logic),
+                    }}
                   />
                 </div>
               </div>
@@ -205,15 +216,21 @@ export default function VerdictView({ trial }: VerdictViewProps) {
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="font-medium text-charcoal flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#D64545]" />
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: getScoreColor(scores.security) }}
+                    />
                     <span>Security & Vulnerabilities</span>
                   </span>
                   <span className="font-mono font-bold text-charcoal">{scores.security}/100</span>
                 </div>
                 <div className="h-3 w-full bg-cream-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#D64545] rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: barsLoaded ? `${scores.security}%` : "0%" }}
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{
+                      width: barsLoaded ? `${scores.security}%` : "0%",
+                      backgroundColor: getScoreColor(scores.security),
+                    }}
                   />
                 </div>
               </div>
@@ -222,15 +239,21 @@ export default function VerdictView({ trial }: VerdictViewProps) {
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="font-medium text-charcoal flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-gold-primary" />
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: getScoreColor(scores.maintainability) }}
+                    />
                     <span>Maintainability & Architecture</span>
                   </span>
                   <span className="font-mono font-bold text-charcoal">{scores.maintainability}/100</span>
                 </div>
                 <div className="h-3 w-full bg-cream-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gold-primary rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: barsLoaded ? `${scores.maintainability}%` : "0%" }}
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{
+                      width: barsLoaded ? `${scores.maintainability}%` : "0%",
+                      backgroundColor: getScoreColor(scores.maintainability),
+                    }}
                   />
                 </div>
               </div>
@@ -533,11 +556,10 @@ export default function VerdictView({ trial }: VerdictViewProps) {
                 </div>
                 <div className="space-y-1 max-w-md mx-auto">
                   <h5 className="font-serif font-bold text-lg text-charcoal">
-                    Appeal Mode (Scheduled for Day 6)
+                    Live Appeal Coming Soon
                   </h5>
                   <p className="text-xs text-charcoal-muted leading-relaxed">
-                    Live Appeal mode allows submitting revised code and automatically recalculating health scores.
-                    To preview the Appeal tab in action right now, select any of the <strong>Demo Cases</strong> above.
+                    Appeal is available in the Demo Cases. Live Appeal is coming soon.
                   </p>
                 </div>
               </div>

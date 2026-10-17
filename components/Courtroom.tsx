@@ -17,6 +17,7 @@ interface CourtroomProps {
   trial: TrialCase;
   onDeliberationComplete: () => void;
   isDeliberationComplete: boolean;
+  initialSkipAnimation?: boolean;
 }
 
 interface SpeakerMeta {
@@ -67,6 +68,7 @@ export default function Courtroom({
   trial,
   onDeliberationComplete,
   isDeliberationComplete,
+  initialSkipAnimation = false,
 }: CourtroomProps) {
   const [currentTurnIndex, setCurrentTurnIndex] = useState<number>(0);
   const [displayedTurns, setDisplayedTurns] = useState<DebateTurn[]>([]);
@@ -92,6 +94,16 @@ export default function Courtroom({
   // Reset or initialize state when trial changes
   useEffect(() => {
     clearTimers();
+    if (initialSkipAnimation) {
+      setIsSkipped(true);
+      setIsThinking(false);
+      setCurrentSpeakingText("");
+      setCurrentTurnIndex(Math.max(trial.debate.length - 1, 0));
+      setDisplayedTurns(trial.debate);
+      onDeliberationComplete();
+      return;
+    }
+
     setIsSkipped(false);
     setDisplayedTurns([]);
     setCurrentSpeakingText("");
@@ -105,7 +117,7 @@ export default function Courtroom({
     }
 
     return () => clearTimers();
-  }, [trial.id]);
+  }, [trial.id, initialSkipAnimation]);
 
   // Start turn animation with a short "Thinking..." pause followed by typing
   const startTurnAnimation = (index: number, debate: DebateTurn[]) => {
@@ -197,12 +209,13 @@ export default function Courtroom({
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full bg-white/10 text-cream-200">
-              Live Deliberation
-            </span>
-            {isDeliberationComplete && (
+            {isDeliberationComplete ? (
               <span className="text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full bg-teal-accent/20 text-teal-accent border border-teal-accent/30">
-                Deliberation Adjourned
+                Verdict Reached
+              </span>
+            ) : (
+              <span className="text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full bg-white/10 text-cream-200">
+                Deliberating
               </span>
             )}
           </div>

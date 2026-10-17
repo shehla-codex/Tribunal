@@ -79,9 +79,11 @@ export async function generateCourtTrial(
     // Validate with Zod schema
     const validatedTrial = TrialCaseSchema.parse({
       ...parsedData,
-      id: parsedData.id || `trial-${Date.now()}`,
+      id: parsedData.id && !parsedData.id.startsWith("trial-")
+        ? parsedData.id
+        : `case-${Date.now().toString(36).toUpperCase()}`,
       timestamp: parsedData.timestamp || Date.now(),
-      codeSnippet: parsedData.codeSnippet || code,
+      codeSnippet: code, // preserve clean unnumbered original code for editor & viewer
       language: parsedData.language || language || "plaintext",
     });
 

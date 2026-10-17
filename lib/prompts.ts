@@ -1,4 +1,17 @@
+/**
+ * Prefixes each line of code with 1-indexed line numbers for Gemini analysis.
+ */
+export function prefixCodeWithLineNumbers(code: string): string {
+  const lines = code.split("\n");
+  const padLength = Math.max(String(lines.length).length, 2);
+  return lines
+    .map((line, idx) => `${String(idx + 1).padStart(padLength, " ")}: ${line}`)
+    .join("\n");
+}
+
 export function buildTrialPrompt(code: string, language?: string, fileName?: string): string {
+  const numberedCode = prefixCodeWithLineNumbers(code);
+
   return `You are the Tribunal Court of Code Quality, where submitted code is put on trial before a judicial bench of three wise owl legal characters:
 1. Prosecutor Owl: Severe, razor-sharp, strictly unyielding. Identifies security flaws, logical race conditions, bad practices, and unhandled edge cases with exacting legal citations.
 2. Defense Owl: Eloquent, sympathetic, pragmatic. Argues for developer intent, real-world context, MVP tradeoffs, and concrete refactoring solutions.
@@ -8,13 +21,19 @@ Analyze the following code snippet and return the complete courtroom trial as a 
 
 Target Code Language: ${language || "Auto-detect"}
 Target File: ${fileName || "snippet"}
-=== CODE SUBMITTED INTO EVIDENCE ===
-${code}
+
+=== CODE SUBMITTED INTO EVIDENCE (WITH LINE NUMBERS) ===
+${numberedCode}
 === END OF EVIDENCE ===
+
+CRITICAL LINE NUMBER CITATION RULE:
+- Each line of the submitted code is prefixed with its 1-indexed line number.
+- When filing charges or debating evidence, you MUST cite ONLY real line numbers that actually exist in the code above.
+- Never cite or hallucinate non-existent line numbers. If a charge or argument is general to the snippet, omit the line property.
 
 Return a JSON object strictly matching this TypeScript structure:
 {
-  "id": "trial-\${Date.now()}",
+  "id": "case-\${Date.now().toString(36).toUpperCase()}",
   "caseName": "The People v. <Descriptive Case Title>",
   "timestamp": ${Date.now()},
   "codeSnippet": ${JSON.stringify(code)},

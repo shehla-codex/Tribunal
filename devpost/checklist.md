@@ -39,7 +39,7 @@ Build mode: learn
   Learner check: Watch a demo trial run through the courtroom debate, click skip, and check the verdict stamp and score breakdown.
   Commit: `Day 3: Implement animated courtroom deliberation and verdict scoring view`
 
-- [ ] **4. Day 4: Client-Side History Storage & UI Refinement**
+- [x] **4. Day 4: Client-Side History Storage & UI Refinement**
   Becomes usable: Completed cases automatically persist to browser `localStorage`; dedicated `/history` page displays past trials, allows reopening verdicts, deleting individual cases, and clearing history with confirmation.
   Why now: Delivers state persistence without requiring any backend database, making the app feel complete and stateful.
   PRD ref: `prd.md > Feature Priorities > P1 (Interactive Polish & Continuity)` (Client-Side History)

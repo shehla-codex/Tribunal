@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { TrialCase, Charge, DebateTurn } from "@/lib/schema";
 import { DEMO_CASES, DEMO_CASE_LIST } from "@/data/demo-cases";
+import { formatDocketId, saveTrialToHistory, getHistoryItem } from "@/lib/storage";
 import Courtroom from "@/components/Courtroom";
 import VerdictView from "@/components/VerdictView";
 
@@ -34,23 +35,26 @@ export default function CodeReview() {
   const [activeDemoId, setActiveDemoId] = useState<string | null>(null);
   const [isDeliberationComplete, setIsDeliberationComplete] = useState<boolean>(false);
 
-  // Helper to format docket identifier cleanly (no raw timestamps)
-  const formatDocketId = (id: string) => {
-    if (id === "demo-auth") return "DOCKET #AUTH-LEAK";
-    if (id === "demo-async") return "DOCKET #ASYNC-RACE";
-    if (id === "demo-sql") return "DOCKET #SQL-INJECT";
-    if (id.startsWith("trial-")) {
-      const suffix = id.replace("trial-", "").slice(-5);
-      return `DOCKET #TR-${suffix}`;
-    }
-    return `DOCKET #${id.toUpperCase()}`;
-  };
-
-  // Check URL query parameters for ?case=demo-auth etc.
+  // Check URL query parameters for ?case=demo-auth or ?history=case-...
   useEffect(() => {
     const caseParam = searchParams.get("case");
     if (caseParam && DEMO_CASES[caseParam]) {
       loadDemo(caseParam);
+      return;
+    }
+
+    const historyParam = searchParams.get("history");
+    if (historyParam) {
+      const item = getHistoryItem(historyParam);
+      if (item) {
+        setCode(item.fullResult.codeSnippet);
+        setLanguage(item.fullResult.language);
+        setFileName(item.fullResult.charges[0]?.file || "evidence.js");
+        setTrial(item.fullResult);
+        setActiveDemoId(null);
+        setIsDeliberationComplete(true);
+        setError(null);
+      }
     }
   }, [searchParams]);
 
@@ -327,7 +331,12 @@ export default function CodeReview() {
           {/* Animated Courtroom Debate & Charges */}
           <Courtroom
             trial={trial}
-            onDeliberationComplete={() => setIsDeliberationComplete(true)}
+            onDeliberationComplete={() => {
+              setIsDeliberationComplete(true);
+              if (trial) {
+                saveTrialToHistory(trial);
+              }
+            }}
             isDeliberationComplete={isDeliberationComplete}
           />
 

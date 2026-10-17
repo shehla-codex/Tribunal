@@ -194,7 +194,7 @@ export default function AppShell({ children }: AppShellProps) {
 
               <div>
                 <label className="block text-xs font-semibold text-charcoal-muted uppercase tracking-wider mb-1.5">
-                  Live API Provider (Day 2+)
+                  Live API Provider
                 </label>
                 <p className="text-xs text-charcoal-muted">
                   Configured server-side via <code className="bg-cream-200 px-1.5 py-0.5 rounded text-charcoal">.env.local</code>. Never exposed to browser.

@@ -15,7 +15,7 @@ export default function HeroBanner() {
       <div className="absolute inset-0 bg-hero-charcoal/60 sm:bg-transparent sm:bg-gradient-to-r sm:from-hero-charcoal sm:via-hero-charcoal/90 sm:via-50% sm:to-transparent pointer-events-none" />
 
       {/* Hero Content (Left-aligned over the dark courtroom area) */}
-      <div className="relative z-10 w-full p-6 sm:p-8 lg:p-12 flex flex-col justify-center max-w-xl">
+      <div className="relative z-10 w-full p-6 sm:p-8 lg:p-12 flex flex-col justify-center max-w-2xl">
         <div className="flex items-center gap-2.5 mb-3">
           <div className="w-8 h-8 rounded-full bg-hero-stone/90 border border-gold-primary/50 flex items-center justify-center text-gold-light shadow-sm">
             <Scale className="w-4 h-4" />
@@ -25,7 +25,7 @@ export default function HeroBanner() {
           </span>
         </div>
 
-        <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-cream-50 leading-tight">
+        <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-[44px] font-bold tracking-tight text-cream-50 leading-tight whitespace-nowrap">
           Put Your Code on Trial
         </h2>
         <p className="mt-3.5 text-sm sm:text-base text-cream-200/95 leading-relaxed font-normal max-w-lg">
