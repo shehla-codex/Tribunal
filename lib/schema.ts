@@ -27,6 +27,8 @@ export const DebateTurnSchema = z.object({
   speaker: SpeakerSchema,
   text: z.string(),
   chargeId: z.string().optional(),
+  ruling: z.enum(["Sustained", "Overruled"]).optional(),
+  objectionText: z.string().optional(),
 });
 export type DebateTurn = z.infer<typeof DebateTurnSchema>;
 
@@ -94,3 +96,28 @@ export const TrialApiRequestSchema = z.object({
   fileName: z.string().optional(),
 });
 export type TrialApiRequest = z.infer<typeof TrialApiRequestSchema>;
+
+// API Request Schema for POST /api/objection
+export const ObjectionApiRequestSchema = z.object({
+  caseSummary: z.string().optional().default(""),
+  charges: z
+    .array(
+      z.object({
+        title: z.string(),
+        description: z.string(),
+        severity: z.string().optional(),
+      })
+    )
+    .optional()
+    .default([]),
+  objectionText: z.string().min(1, "Objection text is required").max(200),
+});
+export type ObjectionApiRequest = z.infer<typeof ObjectionApiRequestSchema>;
+
+// API Response Schema for POST /api/objection
+export const ObjectionApiResponseSchema = z.object({
+  ruling: z.enum(["Sustained", "Overruled"]),
+  reply: z.string(),
+});
+export type ObjectionApiResponse = z.infer<typeof ObjectionApiResponseSchema>;
+

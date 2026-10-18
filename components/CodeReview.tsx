@@ -338,6 +338,10 @@ export default function CodeReview() {
               }
             }}
             isDeliberationComplete={isDeliberationComplete}
+            onTrialUpdate={(updatedTrial) => {
+              setTrial(updatedTrial);
+              saveTrialToHistory(updatedTrial);
+            }}
           />
 
           {/* Verdict View (appears once deliberation is complete or skipped) */}

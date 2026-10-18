@@ -11,6 +11,7 @@ import {
   getHistory, 
   deleteHistoryItem, 
   clearHistory, 
+  saveTrialToHistory,
   HistoryItem, 
   formatDocketId, 
   getScoreColor 
@@ -123,6 +124,10 @@ function HistoryContent() {
             onDeliberationComplete={() => {}}
             isDeliberationComplete={true}
             initialSkipAnimation={true}
+            onTrialUpdate={(updatedTrial) => {
+              setSelectedTrial(updatedTrial);
+              saveTrialToHistory(updatedTrial);
+            }}
           />
 
           {/* Full Verdict & Scoring View (No delay) */}

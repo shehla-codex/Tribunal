@@ -1,4 +1,9 @@
-import { TrialCase, TrialCaseSchema } from "./schema";
+import {
+  TrialCase,
+  TrialCaseSchema,
+  ObjectionApiResponse,
+  ObjectionApiResponseSchema,
+} from "./schema";
 import { buildTrialPrompt } from "./prompts";
 
 /**
@@ -104,3 +109,110 @@ export async function generateCourtTrial(
     }
   }
 }
+
+/**
+ * Calls Gemini REST API to rule on a courtroom objection in character as Chief Justice Owl.
+ * Retries once if the output fails JSON parsing or Zod schema validation.
+ */
+export async function judgeObjection(params: {
+  caseSummary?: string;
+  charges?: { title: string; description: string; severity?: string }[];
+  objectionText: string;
+}): Promise<ObjectionApiResponse> {
+  const apiKey = process.env.LLM_API_KEY?.trim();
+  const model = process.env.LLM_MODEL?.trim() || "gemini-2.5-flash";
+
+  if (!apiKey) {
+    throw new Error(
+      "Court Adjourned: LLM_API_KEY is not configured on the server. Please configure it in .env.local or run in Demo Mode."
+    );
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    model
+  )}:generateContent`;
+
+  const chargesContext = (params.charges || [])
+    .map((c, i) => `${i + 1}. [${c.severity || "Charge"}] ${c.title}: ${c.description}`)
+    .join("\n");
+
+  const prompt = `You are Chief Justice Owl, the wise, authoritative, and impartial presiding judge of the Tribunal Court of Code Quality.
+Counsel has raised an immediate OBJECTION during the courtroom deliberation.
+
+=== CASE CONTEXT ===
+Summary: ${params.caseSummary || "Code under review for software defects and security hazards."}
+
+Formal Charges:
+${chargesContext || "None specified."}
+
+=== OBJECTION RAISED BY COUNSEL ===
+"${params.objectionText}"
+===================================
+
+Rule on this objection as Chief Justice Owl.
+- Ruling must be strictly either "Sustained" (if counsel raises a legitimate point, intended design, valid mitigation, or false positive) or "Overruled" (if counsel is offering an excuse for genuine security/logic/maintainability flaws).
+- The reply must be 1 to 2 sentences spoken in-character with judicial gravity and technical wisdom.
+
+Return a JSON object strictly matching this schema:
+{
+  "ruling": "Sustained" | "Overruled",
+  "reply": "1-2 sentence in-character judicial ruling explanation."
+}
+
+OUTPUT ONLY PURE JSON. Do not include markdown code blocks or explanatory text.`;
+
+  const attemptCall = async (
+    promptText: string,
+    isRetry: boolean
+  ): Promise<ObjectionApiResponse> => {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          temperature: isRetry ? 0.0 : 0.2,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      const errMsg =
+        errorData?.error?.message ||
+        `Objection deliberation responded with status ${res.status}`;
+      throw new Error(`Gemini Objection Error: ${errMsg}`);
+    }
+
+    const responseJson = await res.json();
+    const candidateText =
+      responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!candidateText || typeof candidateText !== "string") {
+      throw new Error("Objection Error: The model returned an empty transcript.");
+    }
+
+    const cleanedJson = extractJsonFromText(candidateText);
+    const parsedData = JSON.parse(cleanedJson);
+
+    return ObjectionApiResponseSchema.parse(parsedData);
+  };
+
+  try {
+    return await attemptCall(prompt, false);
+  } catch (firstError) {
+    const retryPrompt = `${prompt}\n\nIMPORTANT: The previous attempt failed validation. Return ONLY a valid JSON object matching { "ruling": "Sustained" | "Overruled", "reply": string }.`;
+    try {
+      return await attemptCall(retryPrompt, true);
+    } catch (secondError) {
+      const message =
+        secondError instanceof Error ? secondError.message : "Validation failed";
+      throw new Error(`Objection ruling failed after retry: ${message}`);
+    }
+  }
+}
+

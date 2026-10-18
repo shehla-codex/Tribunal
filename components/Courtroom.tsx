@@ -9,15 +9,20 @@ import {
   FileCode2, 
   Scale, 
   MessageSquare,
-  Sparkles
+  Sparkles,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { TrialCase, DebateTurn, Charge } from "@/lib/schema";
+import { isSoundMuted, setSoundMuted, playObjectionSound } from "@/lib/audio";
+import ObjectionModal from "@/components/ObjectionModal";
 
 interface CourtroomProps {
   trial: TrialCase;
   onDeliberationComplete: () => void;
   isDeliberationComplete: boolean;
   initialSkipAnimation?: boolean;
+  onTrialUpdate?: (updatedTrial: TrialCase) => void;
 }
 
 interface SpeakerMeta {
@@ -69,20 +74,38 @@ export default function Courtroom({
   onDeliberationComplete,
   isDeliberationComplete,
   initialSkipAnimation = false,
+  onTrialUpdate,
 }: CourtroomProps) {
+  const [debateTurns, setDebateTurns] = useState<DebateTurn[]>(trial.debate);
   const [currentTurnIndex, setCurrentTurnIndex] = useState<number>(0);
   const [displayedTurns, setDisplayedTurns] = useState<DebateTurn[]>([]);
   const [currentSpeakingText, setCurrentSpeakingText] = useState<string>("");
   const [isThinking, setIsThinking] = useState<boolean>(true);
   const [isSkipped, setIsSkipped] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isShaking, setIsShaking] = useState<boolean>(false);
+  const [isObjectionModalOpen, setIsObjectionModalOpen] = useState<boolean>(false);
+  const [isSubmittingObjection, setIsSubmittingObjection] = useState<boolean>(false);
+  const [cannedObjectionIndex, setCannedObjectionIndex] = useState<number>(0);
 
   const debateBottomRef = useRef<HTMLDivElement | null>(null);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const thinkingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const turnPauseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const activeTurn = trial.debate[currentTurnIndex];
+  const activeTurn = debateTurns[currentTurnIndex];
   const activeSpeakerKey = activeTurn ? activeTurn.speaker : "judge";
+
+  // Initialize sound mute preference from localStorage
+  useEffect(() => {
+    setIsMuted(isSoundMuted());
+  }, []);
+
+  const handleToggleSound = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    setSoundMuted(next);
+  };
 
   // Clear all running timers helper
   const clearTimers = () => {
@@ -94,6 +117,9 @@ export default function Courtroom({
   // Reset or initialize state when trial changes
   useEffect(() => {
     clearTimers();
+    setDebateTurns(trial.debate);
+    setCannedObjectionIndex(0);
+
     if (initialSkipAnimation) {
       setIsSkipped(true);
       setIsThinking(false);
@@ -172,14 +198,109 @@ export default function Courtroom({
     }
   }, [currentSpeakingText, isThinking, displayedTurns.length]);
 
+  // Handle clicking the prominent OBJECTION! button
+  const triggerObjection = () => {
+    clearTimers();
+    playObjectionSound();
+
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!prefersReduced) {
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 450);
+    }
+
+    setIsObjectionModalOpen(true);
+  };
+
+  const handleCloseObjection = () => {
+    setIsObjectionModalOpen(false);
+    if (!isDeliberationComplete && !isSkipped) {
+      if (currentTurnIndex < debateTurns.length) {
+        startTurnAnimation(currentTurnIndex, debateTurns);
+      }
+    }
+  };
+
+  // Submit objection (Demo: cycle canned replies offline; Live: /api/objection)
+  const handleSubmitObjection = async (objectionText: string) => {
+    setIsSubmittingObjection(true);
+    let ruling: "Sustained" | "Overruled" = "Overruled";
+    let reply = "The court is in recess, please try again.";
+
+    const isDemo =
+      trial.id.startsWith("demo-") ||
+      (trial.cannedObjections && trial.cannedObjections.length > 0);
+
+    if (isDemo && trial.cannedObjections && trial.cannedObjections.length > 0) {
+      const canned =
+        trial.cannedObjections[cannedObjectionIndex % trial.cannedObjections.length];
+      setCannedObjectionIndex((prev) => prev + 1);
+      ruling = canned.ruling;
+      reply = canned.reply;
+    } else {
+      try {
+        const res = await fetch("/api/objection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            caseSummary: trial.verdict?.summary || trial.caseName,
+            charges: trial.charges.map((c) => ({
+              title: c.title,
+              description: c.description,
+              severity: c.severity,
+            })),
+            objectionText,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ruling && data.reply) {
+            ruling = data.ruling;
+            reply = data.reply;
+          }
+        }
+      } catch {
+        ruling = "Overruled";
+        reply = "The court is in recess, please try again.";
+      }
+    }
+
+    setIsSubmittingObjection(false);
+    setIsObjectionModalOpen(false);
+
+    const judgeRulingTurn: DebateTurn = {
+      speaker: "judge",
+      text: reply,
+      ruling: ruling,
+      objectionText: objectionText,
+    };
+
+    if (isDeliberationComplete || isSkipped) {
+      const updatedDebate = [...debateTurns, judgeRulingTurn];
+      const newIdx = debateTurns.length;
+      setDebateTurns(updatedDebate);
+      onTrialUpdate?.({ ...trial, debate: updatedDebate });
+      startTurnAnimation(newIdx, updatedDebate);
+    } else {
+      const before = debateTurns.slice(0, currentTurnIndex);
+      const after = debateTurns.slice(currentTurnIndex);
+      const updatedDebate = [...before, judgeRulingTurn, ...after];
+      setDebateTurns(updatedDebate);
+      onTrialUpdate?.({ ...trial, debate: updatedDebate });
+      startTurnAnimation(currentTurnIndex, updatedDebate);
+    }
+  };
+
   // Skip animation to display full debate immediately
   const handleSkipAnimation = () => {
     clearTimers();
     setIsSkipped(true);
     setIsThinking(false);
     setCurrentSpeakingText("");
-    setCurrentTurnIndex(trial.debate.length - 1);
-    setDisplayedTurns(trial.debate);
+    setCurrentTurnIndex(debateTurns.length - 1);
+    setDisplayedTurns(debateTurns);
     onDeliberationComplete();
   };
 
@@ -191,11 +312,11 @@ export default function Courtroom({
     setCurrentSpeakingText("");
     setCurrentTurnIndex(0);
     setIsThinking(true);
-    startTurnAnimation(0, trial.debate);
+    startTurnAnimation(0, debateTurns);
   };
 
   return (
-    <div className="space-y-8">
+    <div className={`space-y-8 ${isShaking ? "animate-shake" : ""}`}>
       {/* 1. Courtroom Bench / Judges Panel */}
       <div className="bg-hero-charcoal rounded-2xl p-6 border border-hero-stone/40 shadow-lg text-cream-50 relative overflow-hidden">
         {/* Subtle background gavel glow */}
@@ -373,8 +494,32 @@ export default function Courtroom({
             </p>
           </div>
 
-          {/* Animation Controls: Skip Animation and Replay */}
-          <div className="flex items-center gap-2">
+          {/* Animation & Objection Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Prominent OBJECTION! button */}
+            <button
+              type="button"
+              onClick={triggerObjection}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-prosecutor-crimson hover:bg-prosecutor-red text-cream-50 shadow-xs transition-all hover:scale-102 active:scale-98"
+            >
+              <Gavel className="w-3.5 h-3.5 text-gold-light" />
+              <span>OBJECTION!</span>
+            </button>
+
+            {/* Mute/Unmute audio toggle */}
+            <button
+              type="button"
+              onClick={handleToggleSound}
+              title={isMuted ? "Unmute courtroom sound effects" : "Mute courtroom sound effects"}
+              className="p-1.5 rounded-lg text-charcoal-muted hover:text-charcoal bg-cream-200/70 hover:bg-cream-300 border border-card-border transition-colors shadow-2xs"
+            >
+              {isMuted ? (
+                <VolumeX className="w-4 h-4 text-charcoal-muted" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-gold-primary" />
+              )}
+            </button>
+
             {!isDeliberationComplete && (
               <button
                 type="button"
@@ -421,18 +566,39 @@ export default function Courtroom({
                   />
                 </div>
 
-                <div className="space-y-1 flex-1">
+                <div className="space-y-1.5 flex-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className={`font-semibold tracking-wide text-xs ${meta.textColor}`}>
-                      {meta.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-semibold tracking-wide text-xs ${meta.textColor}`}>
+                        {meta.name}
+                      </span>
+                      {turn.ruling && (
+                        <span
+                          className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
+                            turn.ruling === "Sustained"
+                              ? "bg-teal-50 text-teal-accent border-teal-200"
+                              : "bg-red-50 text-prosecutor-crimson border-red-200"
+                          }`}
+                        >
+                          {turn.ruling}
+                        </span>
+                      )}
+                    </div>
                     {turn.chargeId && (
                       <span className="font-mono text-[10px] text-charcoal-muted px-2 py-0.5 rounded-md bg-cream-200/60 border border-card-border">
                         Ref: {turn.chargeId}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs sm:text-sm text-charcoal leading-relaxed">
+
+                  {turn.objectionText && (
+                    <div className="bg-cream-200/60 border border-card-border rounded-lg p-2 text-xs text-charcoal font-sans italic">
+                      <span className="font-semibold not-italic text-gold-primary mr-1">Counsel&apos;s Objection:</span>
+                      &ldquo;{turn.objectionText}&rdquo;
+                    </div>
+                  )}
+
+                  <p className="text-xs sm:text-sm text-charcoal leading-relaxed font-sans">
                     {turn.text}
                   </p>
                 </div>
@@ -459,17 +625,37 @@ export default function Courtroom({
 
               <div className="space-y-1.5 flex-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span
-                    className={`font-semibold tracking-wide text-xs ${SPEAKERS[activeSpeakerKey].textColor}`}
-                  >
-                    {SPEAKERS[activeSpeakerKey].name}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-semibold tracking-wide text-xs ${SPEAKERS[activeSpeakerKey].textColor}`}
+                    >
+                      {SPEAKERS[activeSpeakerKey].name}
+                    </span>
+                    {activeTurn.ruling && (
+                      <span
+                        className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
+                          activeTurn.ruling === "Sustained"
+                            ? "bg-teal-50 text-teal-accent border-teal-200"
+                            : "bg-red-50 text-prosecutor-crimson border-red-200"
+                        }`}
+                      >
+                        {activeTurn.ruling}
+                      </span>
+                    )}
+                  </div>
                   {activeTurn.chargeId && (
                     <span className="font-mono text-[10px] text-charcoal-muted px-2 py-0.5 rounded-md bg-cream-200/60 border border-card-border">
                       Ref: {activeTurn.chargeId}
                     </span>
                   )}
                 </div>
+
+                {activeTurn.objectionText && (
+                  <div className="bg-cream-200/60 border border-card-border rounded-lg p-2 text-xs text-charcoal font-sans italic">
+                    <span className="font-semibold not-italic text-gold-primary mr-1">Counsel&apos;s Objection:</span>
+                    &ldquo;{activeTurn.objectionText}&rdquo;
+                  </div>
+                )}
 
                 {isThinking ? (
                   <div className="flex items-center gap-2 text-xs text-charcoal-muted py-1 italic">
@@ -493,6 +679,14 @@ export default function Courtroom({
           <div ref={debateBottomRef} />
         </div>
       </div>
+
+      {/* Objection Modal */}
+      <ObjectionModal
+        isOpen={isObjectionModalOpen}
+        onClose={handleCloseObjection}
+        onSubmit={handleSubmitObjection}
+        isSubmitting={isSubmittingObjection}
+      />
     </div>
   );
 }
