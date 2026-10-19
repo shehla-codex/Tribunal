@@ -14,10 +14,12 @@ import {
   Check, 
   AlertCircle,
   Lightbulb,
-  Sparkles
+  Sparkles,
+  FileText,
 } from "lucide-react";
 import { TrialCase, Charge } from "@/lib/schema";
 import { getScoreColor } from "@/lib/storage";
+import CaseReportModal from "@/components/CaseReportModal";
 
 interface VerdictViewProps {
   trial: TrialCase;
@@ -29,6 +31,7 @@ export default function VerdictView({ trial, initialSkipAnimation = false }: Ver
   const [animatedScore, setAnimatedScore] = useState<number>(0);
   const [barsLoaded, setBarsLoaded] = useState<boolean>(false);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
   const { verdict, scores, charges, appealData } = trial;
 
@@ -115,8 +118,8 @@ export default function VerdictView({ trial, initialSkipAnimation = false }: Ver
             </p>
           </div>
 
-          {/* Animated Rubber Stamp */}
-          <div className="shrink-0 flex items-center justify-center lg:justify-end">
+          {/* Verdict stamp + Case Report button */}
+          <div className="shrink-0 flex flex-col items-center lg:items-end gap-3">
             <div
               className="animate-stamp inline-block px-6 py-3 border-4 border-dashed rounded-xl uppercase font-serif font-extrabold text-xl sm:text-2xl tracking-widest shadow-sm select-none"
               style={{
@@ -127,6 +130,15 @@ export default function VerdictView({ trial, initialSkipAnimation = false }: Ver
             >
               {verdict.ruling}
             </div>
+            {/* Case Report button — opens the full report modal */}
+            <button
+              type="button"
+              onClick={() => setIsReportOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-hero-charcoal text-cream-50 text-xs font-semibold hover:bg-hero-charcoal/90 transition-colors shadow-xs"
+            >
+              <FileText className="w-3.5 h-3.5 text-gold-primary" />
+              <span>Case Report</span>
+            </button>
           </div>
         </div>
 
@@ -567,6 +579,11 @@ export default function VerdictView({ trial, initialSkipAnimation = false }: Ver
           </div>
         )}
       </div>
+
+      {/* Case Report modal — rendered in portal at end of component */}
+      {isReportOpen && (
+        <CaseReportModal trial={trial} onClose={() => setIsReportOpen(false)} />
+      )}
     </div>
   );
 }

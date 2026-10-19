@@ -105,7 +105,7 @@
     "previousScore": 45,
     "newScore": 94,
     "improvements": [
-      "Replaced f-string interpolation with parameterized SQL bindings (?)",
+      "Replaced f-string interpolation with parameterized SQL bindings",
       "Added Pydantic query validation with pagination limits (max 50 records)",
       "Redacted database error internals from API responses",
       "Implemented context-managed database connections with dependency injection"
