@@ -1,74 +1,99 @@
-# Tribunal — "Your code. Put on trial."
+# ⚖️ Tribunal
 
-> An adversarial, owl-themed AI courtroom where your code is judged by three AI characters: a strict Prosecutor, a pragmatic Defense Attorney, and a wise Judge.
+### *Your code. Put on trial.*
 
-Built for the **Devpost Learn Hackathon: "Build With AI: Basics"**.
+**Live demo:** https://tribunal-silk.vercel.app
 
----
+Tribunal is a web app where your code stands trial. Three owl characters argue over it in a courtroom: a **Prosecutor Owl** who attacks weaknesses, a **Defense Owl** who defends the code, and a **Chief Justice Owl** who delivers the verdict. You get a Code Health Score and a ranked list of fixes, in a format that is actually fun to read.
 
-## ⚖️ Features
-- **Theatrical Deliberation**: Watch three cartoon owl characters debate your code turn-by-turn with animated typing indicators and avatar states.
-- **Interactive OBJECTION!**: Hit the objection button mid-trial to interject your own counter-argument, triggering dramatic screen shake, overlay effects, and in-character rulings.
-- **Fair & Actionable Verdict**: Receive a binding verdict stamp (*Guilty*, *Not Guilty*, or *Guilty with Community Service*), a circular Code Health Score ring (0–100), and a prioritized "Sentence" list of fixes with exact file and line references.
-- **Offline Demo Mode**: Includes 3 pre-built trial cases that run 100% offline with zero API keys or external network dependencies.
-- **Appeal & Comparison**: Re-evaluate improved code and see before/after score deltas.
-- **Client-Side History**: All completed trials persist locally in browser `localStorage`.
-- **Markdown Export**: Download clean case reports for team review or GitHub PR documentation.
+Built solo by **Syeda Shehla** for the [Build With AI: Basics](https://learn-ai-basics.devpost.com/) hackathon on Devpost.
 
 ---
 
-## 🛠️ Stack & Architecture
-- **Framework**: [Next.js 14+](https://nextjs.org/) (App Router)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with custom courtroom palette tokens
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Validation**: [Zod](https://zod.dev/)
-- **AI Integration**: [Google GenAI SDK](https://github.com/google-gemini/generative-ai-js) (single-call structured JSON prompt)
+## Screenshots
 
-### Token-Saving Architecture
-Instead of multi-agent loops that burn thousands of tokens, Tribunal generates the complete trial (charges, debate dialogue, category scores, verdict, and sentence) in **one single structured LLM call**.
+### Dashboard
+<img src="docs/screenshots/01-dashboard.png" alt="Tribunal dashboard with demo cases" width="500">
+
+### Courtroom debate and OBJECTION!
+<img src="docs/screenshots/02-courtroom-objection.png" alt="Courtroom debate with the Lodge Your Objection modal" width="500">
+
+### Verdict
+<img src="docs/screenshots/03-verdict.png" alt="Guilty verdict with Code Health Score" width="800">
+
+### Case Report
+<img src="docs/screenshots/04-case-report.png" alt="Case Report modal with Markdown download" width="500">
 
 ---
 
-## 🚀 Quickstart
+## How it works
 
-### 1. Install Dependencies
+1. **File a case**: paste your code, or pick a Demo case (Auth Leak, Async Race, SQL Injection).
+2. **Charges**: findings are listed and tagged **Logic**, **Security** or **Maintainability**, each with a score.
+3. **The debate**: Prosecutor Owl and Defense Owl argue it out automatically.
+4. **OBJECTION!**: an objection interrupts the debate (screen shake + sound), and the Chief Justice rules *Sustained* or *Overruled*.
+5. **Verdict**: a verdict stamp, a Code Health Score ring, and ranked fixes as the "Sentence".
+6. **Explore**: tabs for Detailed Findings, Code Suggestions and Appeal.
+7. **History and report**: past cases are saved in your browser, and each case opens as a Case Report that can be downloaded as Markdown.
+
+## Features
+
+- Three distinct owl characters: Prosecutor (crimson), Defense (blue), Chief Justice (gold)
+- Findings tagged Logic / Security / Maintainability with scores
+- Auto-playing courtroom debate with an OBJECTION! moment
+- Code Health Score ring and ranked fixes
+- Case History saved in `localStorage`
+- Case Report modal with Markdown download
+- **Demo Mode**: fully offline, never rate-limited, works instantly
+- Server-side rate limiting for live mode
+
+## Tech stack
+
+- **Next.js** (App Router) + **TypeScript**
+- **Tailwind CSS**
+- **Google Gemini** (`gemini-3.8-flash`) with **zod**-validated JSON output
+- Fonts: Playfair Display + Inter
+- Deployed on **Vercel**
+- No database, no login
+
+LLM calls happen **server-side only**, so the API key is never exposed to the browser. Each case uses one main Gemini call, plus a small extra call per objection.
+
+## Run locally
+
 ```bash
+git clone https://github.com/shehla-codex/tribunal.git
+cd tribunal
 npm install
 ```
 
-### 2. Run the Development Server
+Create a `.env.local` file in the project root:
+
+```env
+LLM_PROVIDER=your_provider
+LLM_MODEL=gemini-3.8-flash
+LLM_API_KEY=your_key_here
+```
+
+Then start the dev server:
+
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000. Demo Mode works even without an API key.
 
-> **Note**: Demo Mode works out of the box with **no API keys required**. To enable live analysis with your own code, create a `.env.local` file with:
-> ```env
-> LLM_PROVIDER=gemini
-> LLM_MODEL=gemini-2.5-flash
-> LLM_API_KEY=your_gemini_api_key_here
-> ```
+## Scope
 
----
+Intentionally left out to keep the project focused: GitHub URL mode, live Appeal (the tab shows "Live Appeal Coming Soon"), database, authentication, PDF export.
 
-## 📁 Repository Structure
-```
-tribunal/
-├── app/               # Next.js App Router (pages & layouts)
-├── components/        # UI components (AppShell, HeroBanner, Courtroom, Verdict)
-├── lib/               # Schemas, LLM caller, and localStorage helpers
-├── data/demo-cases/   # Pre-generated offline demo cases
-├── public/assets/     # Mascots, banners, and logos
-├── devpost/           # Devpost Learn hackathon course artifacts
-├── DESIGN.md          # Visual specification and palette tokens
-├── DEMO_SCRIPT.md     # 1-3 minute video demonstration script
-├── AGENTS.md          # Directives for AI coding agents
-└── LICENSE            # MIT License
-```
+## Hackathon docs
+
+Planning documents are in the [`devpost/`](devpost/) folder: `scope.md`, `prd.md`, `spec.md`.
+
+## Credits
+
+No third-party game or film assets are used.
 
 ---
 
-## 📜 License
-Distributed under the [MIT License](file:///c:/dev/tribunal/LICENSE).
+Made by **Syeda Shehla** · [@shehla-codex](https://github.com/shehla-codex)
