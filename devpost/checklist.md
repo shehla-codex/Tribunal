@@ -93,3 +93,4 @@ Activity mode:
 ## Revisions
 
 - Day 5: OBJECTION! mechanic complete — button, shake, Web Audio gavel, mute toggle, ObjectionModal with chips/200-char input, judge Sustained/Overruled badge, Demo Mode canned cycling, `/api/objection` with Zod + retry, history persistence; fixed TS2304 missing `saveTrialToHistory` import in `history/page.tsx`.
+Day 6: Case Report, Markdown download, rate limit done.
